@@ -4,6 +4,9 @@ use crate::{
     updates::TrieUpdates,
     StateRoot,
 };
+
+use once_cell::sync::Lazy;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use reth_db::{
     cursor::DbCursorRO,
     models::{AccountBeforeTx, BlockNumberAddress},
@@ -22,6 +25,22 @@ use std::{
     ops::RangeInclusive,
 };
 
+const fn second() -> usize {
+    10
+}
+
+const fn third() -> usize {
+    5
+}
+// Expected number of bundles where we can expect a speed-up by recovering the senders in
+// parallel.
+pub(crate) static PARALLEL_BUNDLE_THRESHOLD: Lazy<usize> =
+    Lazy::new(|| match rayon::current_num_threads() {
+        0..=1 => usize::MAX,
+        2..=8 => second(),
+        _ => third(),
+    });
+
 /// Representation of in-memory hashed state.
 #[derive(PartialEq, Eq, Clone, Default, Debug)]
 pub struct HashedPostState {
@@ -35,23 +54,41 @@ impl HashedPostState {
     /// Initialize [HashedPostState] from bundle state.
     /// Hashes all changed accounts and storage entries that are currently stored in the bundle
     /// state.
-    pub fn from_bundle_state<'a>(
-        state: impl IntoIterator<Item = (&'a Address, &'a BundleAccount)>,
-    ) -> Self {
-        let mut this = Self::default();
-        for (address, account) in state {
-            let hashed_address = keccak256(address);
-            this.accounts.insert(hashed_address, account.info.clone().map(into_reth_acc));
+    pub fn from_bundle_state(state: &HashMap<Address, BundleAccount>) -> Self {
+        if state.len() < *PARALLEL_BUNDLE_THRESHOLD {
+            let mut this = Self::default();
+            state.iter().for_each(|(address, account)| {
+                let hashed_address = keccak256(address);
+                this.accounts.insert(hashed_address, account.info.clone().map(into_reth_acc));
 
-            let hashed_storage = HashedStorage::from_iter(
-                account.status.was_destroyed(),
-                account.storage.iter().map(|(key, value)| {
-                    (keccak256(B256::new(key.to_be_bytes())), value.present_value)
-                }),
-            );
-            this.storages.insert(hashed_address, hashed_storage);
+                let hashed_storage = HashedStorage::from_iter(
+                    account.status.was_destroyed(),
+                    account.storage.iter().map(|(key, value)| {
+                        (keccak256(B256::new(key.to_be_bytes())), value.present_value)
+                    }),
+                );
+                this.storages.insert(hashed_address, hashed_storage);
+            });
+            this
+        } else {
+            let items: (Vec<_>, Vec<_>) = state
+                .into_par_iter()
+                .map(|(address, account)| {
+                    let hashed_address = keccak256(address);
+                    let hashed_storage = HashedStorage::from_iter(
+                        account.status.was_destroyed(),
+                        account.storage.iter().map(|(key, value)| {
+                            (keccak256(B256::new(key.to_be_bytes())), value.present_value)
+                        }),
+                    );
+                    (
+                        (hashed_address, account.info.clone().map(into_reth_acc)),
+                        (hashed_address, hashed_storage),
+                    )
+                })
+                .unzip();
+            Self { accounts: HashMap::from_iter(items.0), storages: HashMap::from_iter(items.1) }
         }
-        this
     }
 
     /// Initialize [HashedPostState] from revert range.
@@ -324,6 +361,10 @@ pub struct HashedStorageSorted {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use revm::{db::BundleState, primitives::AccountInfo};
+
     use super::*;
 
     #[test]
@@ -398,5 +439,91 @@ mod tests {
             Some(&updated_slot_value)
         );
         assert_eq!(account_storage.map(|st| st.wiped), Some(true));
+    }
+
+    #[test]
+    fn from_bundle_state() {
+        let address1 = Address::with_last_byte(1);
+        let address2 = Address::with_last_byte(2);
+        let slot1 = U256::from(1015);
+        let slot2 = U256::from(2015);
+
+        let account1 = AccountInfo { nonce: 1, ..Default::default() };
+        let account2 = AccountInfo { nonce: 2, ..Default::default() };
+
+        let bundle_state = BundleState::builder(2..=2)
+            .state_present_account_info(address1, account1)
+            .state_present_account_info(address2, account2)
+            .state_storage(address1, HashMap::from([(slot1, (U256::ZERO, U256::from(10)))]))
+            .state_storage(address2, HashMap::from([(slot2, (U256::ZERO, U256::from(20)))]))
+            .build();
+
+        let post_state = HashedPostState::from_bundle_state(&bundle_state.state);
+
+        let expected = HashedPostState {
+            accounts: {
+                let mut map = HashMap::new();
+                map.insert(
+                    B256::from_str(
+                        "1468288056310c82aa4c01a7e12a10f8111a0560e72b700555479031b86c357d",
+                    )
+                    .unwrap(),
+                    Some(Account { nonce: 1, balance: U256::ZERO, bytecode_hash: None }),
+                );
+                map.insert(
+                    B256::from_str(
+                        "d52688a8f926c816ca1e079067caba944f158e764817b83fc43594370ca9cf62",
+                    )
+                    .unwrap(),
+                    Some(Account { nonce: 2, balance: U256::ZERO, bytecode_hash: None }),
+                );
+                map
+            },
+            storages: {
+                let mut map = HashMap::new();
+                map.insert(
+                    B256::from_str(
+                        "1468288056310c82aa4c01a7e12a10f8111a0560e72b700555479031b86c357d",
+                    )
+                    .unwrap(),
+                    HashedStorage {
+                        wiped: false,
+                        storage: {
+                            let mut map = HashMap::new();
+                            map.insert(
+                                B256::from_str(
+                                    "702e032eb68e906ed34dbb3ff78d639fc01532dcc72ed6e29091286befc6d467",
+                                )
+                                .unwrap(),
+                                U256::from(10),
+                            );
+                            map
+                        },
+                    },
+                );
+                map.insert(
+                    B256::from_str(
+                        "d52688a8f926c816ca1e079067caba944f158e764817b83fc43594370ca9cf62",
+                    )
+                    .unwrap(),
+                    HashedStorage {
+                        wiped: false,
+                        storage: {
+                            let mut map = HashMap::new();
+                            map.insert(
+                                B256::from_str(
+                                    "6b709db8adde8e2e8f6fef97cbe60c1bef02d8f7e448f987620e968e6aec26a4",
+                                )
+                                .unwrap(),
+                                U256::from(20),
+                            );
+                            map
+                        },
+                    },
+                );
+                map
+            },
+        };
+        assert_eq!(post_state, expected);
     }
 }

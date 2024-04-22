@@ -7570,6 +7570,8 @@ dependencies = [
  "metrics",
  "once_cell",
  "proptest",
+ "rand 0.8.5",
+ "rayon",
  "reth-db",
  "reth-interfaces",
  "reth-metrics",
