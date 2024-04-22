@@ -5,7 +5,6 @@ use crate::{
     StateRoot,
 };
 
-use once_cell::sync::Lazy;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use reth_db::{
     cursor::DbCursorRO,
@@ -25,21 +24,7 @@ use std::{
     ops::RangeInclusive,
 };
 
-const fn second() -> usize {
-    10
-}
-
-const fn third() -> usize {
-    5
-}
-// Expected number of bundles where we can expect a speed-up by recovering the senders in
-// parallel.
-pub(crate) static PARALLEL_BUNDLE_THRESHOLD: Lazy<usize> =
-    Lazy::new(|| match rayon::current_num_threads() {
-        0..=1 => usize::MAX,
-        2..=8 => second(),
-        _ => third(),
-    });
+const PARALLEL_BUNDLE_THRESHOLD: usize = 8;
 
 /// Representation of in-memory hashed state.
 #[derive(PartialEq, Eq, Clone, Default, Debug)]
@@ -55,7 +40,7 @@ impl HashedPostState {
     /// Hashes all changed accounts and storage entries that are currently stored in the bundle
     /// state.
     pub fn from_bundle_state(state: &HashMap<Address, BundleAccount>) -> Self {
-        if state.len() < *PARALLEL_BUNDLE_THRESHOLD {
+        if state.len() < PARALLEL_BUNDLE_THRESHOLD {
             let mut this = Self::default();
             state.iter().for_each(|(address, account)| {
                 let hashed_address = keccak256(address);

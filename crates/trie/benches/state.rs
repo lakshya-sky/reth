@@ -16,16 +16,17 @@ use revm::{
 use std::collections::HashMap;
 
 pub fn state_lookups(c: &mut Criterion) {
-    let mut group = c.benchmark_group("HashedPostState");
-
-    for size in [2, 4, 8, 16, 32, 64, 96, 128 /* , 256, 512, 1024, 8192 */] {
+    rayon::ThreadPoolBuilder::new().num_threads(2).build_global().unwrap();
+    let mut group = c.benchmark_group("from_bundle_state");
+    for size in [4, 8, 16, 32, 64, 96, 128, 256, 512, 1024, 4096] {
         let test_data = generate_test_data(size);
+        println!("threads: {}, size: {}", rayon::current_num_threads(), size);
         state_bench(&mut group, &test_data);
     }
 }
 
 fn state_bench(group: &mut BenchmarkGroup<'_, WallTime>, input: &HashMap<Address, BundleAccount>) {
-    let group_id = format!("from_bundle_state | input size: {}", input.len());
+    let group_id = format!("input size: {}", input.len());
 
     let setup = move || {
         HashedPostState::from_bundle_state(&input);
@@ -74,7 +75,7 @@ fn generate_test_data(size: usize) -> HashMap<Address, BundleAccount> {
         .zip(vec_status)
         .map(|((address, present_account), status)| {
             let mut map = HashMap::new();
-            for slot in vec(any::<(U256, U256)>(), rand::thread_rng().gen_range(0..=8))
+            for slot in vec(any::<(U256, U256)>(), rand::thread_rng().gen_range(4..=8))
                 .new_tree(&mut runner)
                 .unwrap()
                 .current()
