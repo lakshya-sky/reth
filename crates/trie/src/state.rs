@@ -5,7 +5,7 @@ use crate::{
     StateRoot,
 };
 
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use reth_db::{
     cursor::DbCursorRO,
     models::{AccountBeforeTx, BlockNumberAddress},
@@ -39,10 +39,16 @@ impl HashedPostState {
     /// Initialize [HashedPostState] from bundle state.
     /// Hashes all changed accounts and storage entries that are currently stored in the bundle
     /// state.
-    pub fn from_bundle_state(state: &HashMap<Address, BundleAccount>) -> Self {
-        if state.len() < PARALLEL_BUNDLE_THRESHOLD {
+    pub fn from_bundle_state<'a, I>(state: I) -> Self
+    where
+        I: IntoIterator<Item = (&'a Address, &'a BundleAccount)>
+            + IntoParallelIterator<Item = (&'a Address, &'a BundleAccount)>,
+        I::IntoIter: ExactSizeIterator + Send,
+    {
+        let iter = state.into_iter();
+        if iter.len() < PARALLEL_BUNDLE_THRESHOLD {
             let mut this = Self::default();
-            state.iter().for_each(|(address, account)| {
+            iter.for_each(|(address, account)| {
                 let hashed_address = keccak256(address);
                 this.accounts.insert(hashed_address, account.info.clone().map(into_reth_acc));
 
@@ -56,8 +62,8 @@ impl HashedPostState {
             });
             this
         } else {
-            let items: (Vec<_>, Vec<_>) = state
-                .into_par_iter()
+            let items: (Vec<_>, Vec<_>) = iter
+                .par_bridge()
                 .map(|(address, account)| {
                     let hashed_address = keccak256(address);
                     let hashed_storage = HashedStorage::from_iter(

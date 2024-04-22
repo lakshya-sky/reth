@@ -29,7 +29,7 @@ fn state_bench(group: &mut BenchmarkGroup<'_, WallTime>, input: &HashMap<Address
     let group_id = format!("input size: {}", input.len());
 
     let setup = move || {
-        HashedPostState::from_bundle_state(&input);
+        HashedPostState::from_bundle_state(input);
     };
 
     group.bench_function(group_id, |b| {
