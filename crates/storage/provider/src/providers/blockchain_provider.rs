@@ -623,7 +623,32 @@ where
     }
 
     fn transaction_block(&self, id: TxNumber) -> ProviderResult<Option<BlockNumber>> {
-        self.database.transaction_block(id)
+        if let Some(num) = self.database.transaction_block(id)? {
+            return Ok(Some(num));
+        }
+        // Get First and Last block number from the in-memory state
+        let last_block_number = self.last_block_number()?;
+        let first_block_number = last_block_number.saturating_add(1);
+        let canonical_block_number = self.canonical_in_memory_state.get_canonical_block_number();
+
+        // Get next_tx_num from the last block stored in the database
+        let Some(last_block_body_indice) = self.database.block_body_indices(last_block_number)?
+        else {
+            return Ok(None);
+        };
+        let mut next_tx_num = last_block_body_indice.next_tx_num();
+
+        for number in first_block_number..=canonical_block_number {
+            let Some(block_state) = self.canonical_in_memory_state.state_by_number(number) else {
+                return Ok(None);
+            };
+            let txs_len = block_state.block().block().body.len();
+            next_tx_num += txs_len as u64;
+            if id < next_tx_num {
+                return Ok(Some(number));
+            }
+        }
+        Ok(None)
     }
 
     fn transactions_by_block(
