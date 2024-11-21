@@ -1,4 +1,6 @@
 use crate::DBProvider;
+use alloy_consensus::Header;
+use alloy_eips::eip4895::Withdrawals;
 use alloy_primitives::BlockNumber;
 use reth_db::{
     cursor::DbCursorRW,
@@ -37,14 +39,15 @@ impl<T, Provider, Primitives: FullNodePrimitives> ChainStorageWriter<Provider, P
 #[derive(Debug, Default, Clone, Copy)]
 pub struct EthStorage;
 
-impl<Provider> BlockBodyWriter<Provider, reth_primitives::BlockBody> for EthStorage
+impl<Provider, Body> BlockBodyWriter<Provider, Body> for EthStorage
 where
     Provider: DBProvider<Tx: DbTxMut>,
+    Body: BlockBody<Ommers = Header, Withdrawals = Withdrawals>,
 {
     fn write_block_bodies(
         &self,
         provider: &Provider,
-        bodies: Vec<(u64, Option<reth_primitives::BlockBody>)>,
+        bodies: Vec<(u64, Option<Body>)>,
     ) -> ProviderResult<()> {
         let mut ommers_cursor = provider.tx_ref().cursor_write::<tables::BlockOmmers>()?;
         let mut withdrawals_cursor =
@@ -54,12 +57,13 @@ where
             let Some(body) = body else { continue };
 
             // Write ommers if any
-            if !body.ommers.is_empty() {
-                ommers_cursor.append(block_number, StoredBlockOmmers { ommers: body.ommers })?;
+            if !body.ommers().is_empty() {
+                ommers_cursor
+                    .append(block_number, StoredBlockOmmers { ommers: body.ommers().into() })?;
             }
 
             // Write withdrawals if any
-            if let Some(withdrawals) = body.withdrawals {
+            if let Some(withdrawals) = body.withdrawals() {
                 if !withdrawals.is_empty() {
                     withdrawals_cursor
                         .append(block_number, StoredBlockWithdrawals { withdrawals })?;

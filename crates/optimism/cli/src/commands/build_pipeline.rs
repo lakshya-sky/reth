@@ -34,13 +34,13 @@ pub(crate) async fn build_import_pipeline<N, C>(
     config: &Config,
     provider_factory: ProviderFactory<N>,
     consensus: &Arc<C>,
-    file_client: Arc<FileClient>,
+    file_client: Arc<FileClient<reth_optimism_primitives::Block>>,
     static_file_producer: StaticFileProducer<ProviderFactory<N>>,
     disable_exec: bool,
 ) -> eyre::Result<(Pipeline<N>, impl Stream<Item = NodeEvent>)>
 where
     N: CliNodeTypes + ProviderNodeTypes<ChainSpec = OpChainSpec>,
-    C: Consensus + 'static,
+    C: Consensus<alloy_consensus::Header, reth_optimism_primitives::BlockBody> + 'static,
 {
     if !file_client.has_canonical_blocks() {
         eyre::bail!("unable to import non canonical blocks");

@@ -60,7 +60,7 @@ where
     >,
     N::AddOns: RethRpcAddOns<Adapter<N>>,
     N::Primitives:
-        FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+        FullNodePrimitives<Block: reth_node_api::Block>,
 {
     let tasks = TaskManager::current();
     let exec = tasks.executor();

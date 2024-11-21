@@ -90,7 +90,7 @@ impl<ChainSpec: EthChainSpec + EthereumHardforks> EthBeaconConsensus<ChainSpec> 
     }
 }
 
-impl<ChainSpec: Send + Sync + EthChainSpec + EthereumHardforks + Debug> Consensus
+impl<ChainSpec: Send + Sync + EthChainSpec + EthereumHardforks + Debug> Consensus<Header, BlockBody>
     for EthBeaconConsensus<ChainSpec>
 {
     fn validate_body_against_header(

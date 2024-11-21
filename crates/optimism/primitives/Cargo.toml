@@ -16,6 +16,7 @@ workspace = true
 reth-node-types.workspace = true
 reth-primitives.workspace = true
 reth-primitives-traits.workspace = true
+revm-primitives = { workspace = true, features = ["serde"] }
 reth-codecs = { workspace = true, optional = true }
 
 # ethereum
@@ -27,6 +28,13 @@ alloy-rlp.workspace = true
 # op
 op-alloy-consensus.workspace = true
 
+# crypto
+secp256k1 = { workspace = true, features = [
+	"global-context",
+	"recovery",
+	"rand",
+], optional = true }
+
 # codec
 bytes.workspace = true
 serde = { workspace = true, optional = true }
@@ -34,12 +42,34 @@ serde = { workspace = true, optional = true }
 # misc
 derive_more.workspace = true
 
+# arbitrary utils
+arbitrary = { workspace = true, features = ["derive"], optional = true }
+rand = { workspace = true, optional = true }
+
 [dev-dependencies]
 reth-codecs = { workspace = true, features = ["test-utils"] }
+revm-primitives = { workspace = true, features = ["arbitrary"] }
+
+arbitrary = { workspace = true, features = ["derive"] }
+proptest-arbitrary-interop.workspace = true
+proptest.workspace = true
+
 rstest.workspace = true
 
 [features]
-default = ["reth-codec"]
+default = ["std", "reth-codec", "secp256k1", "optimism"]
+optimism = [
+    "reth-primitives/optimism",
+]
+std = [
+	"reth-primitives-traits/std",
+	"revm-primitives/std",
+	"alloy-consensus/std",
+	"alloy-eips/std",
+	"alloy-primitives/std",
+	"secp256k1?/std",
+	"serde/std",
+]
 reth-codec = [
     "dep:reth-codecs",
     "reth-primitives/reth-codec"
@@ -54,3 +84,17 @@ serde = [
     "reth-codecs/serde",
     "op-alloy-consensus/serde",
 ]
+arbitrary = [
+	"dep:arbitrary",
+	"alloy-eips/arbitrary",
+	"rand",
+	"reth-codec",
+	"reth-primitives-traits/arbitrary",
+	"revm-primitives/arbitrary",
+	"secp256k1",
+	"alloy-consensus/arbitrary",
+	"alloy-primitives/arbitrary",
+	"op-alloy-consensus/arbitrary",
+	"reth-codecs?/arbitrary",
+]
+secp256k1 = ["dep:secp256k1"]

@@ -53,6 +53,7 @@ alloy-primitives.workspace = true
 alloy-rlp.workspace = true
 
 # misc
+bytes.workspace = true
 futures-util.workspace = true
 derive_more = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
@@ -83,18 +84,18 @@ reth-cli-commands.workspace = true
 [features]
 optimism = [
     "op-alloy-consensus",
-	"alloy-consensus",
-	"dep:derive_more",
-	"dep:serde",
-	"reth-primitives/optimism",
-	"reth-optimism-evm/optimism",
-	"reth-provider/optimism",
-	"reth-node-core/optimism",
-	"reth-optimism-node/optimism",
-	"reth-execution-types/optimism",
-	"reth-db/optimism",
-	"reth-db-api/optimism",
-	"reth-downloaders/optimism"
+    "alloy-consensus",
+    "dep:derive_more",
+    "dep:serde",
+    "reth-primitives/optimism",
+    "reth-optimism-evm/optimism",
+    "reth-provider/optimism",
+    "reth-node-core/optimism",
+    "reth-optimism-node/optimism",
+    "reth-execution-types/optimism",
+    "reth-db/optimism",
+    "reth-db-api/optimism",
+    "reth-downloaders/optimism",
 ]
 asm-keccak = [
     "alloy-primitives/asm-keccak",
@@ -104,21 +105,15 @@ asm-keccak = [
 ]
 
 # Jemalloc feature for vergen to generate correct env vars
-jemalloc = [
-    "reth-node-core/jemalloc",
-    "reth-node-metrics/jemalloc"
-]
+jemalloc = ["reth-node-core/jemalloc", "reth-node-metrics/jemalloc"]
 
-dev = [
-    "dep:proptest",
-    "reth-cli-commands/arbitrary"
-]
+dev = ["dep:proptest", "reth-cli-commands/arbitrary", "reth-optimism-primitives/arbitrary"]
 serde = [
-	"alloy-consensus?/serde",
-	"alloy-eips/serde",
-	"alloy-primitives/serde",
-	"op-alloy-consensus?/serde",
-	"reth-execution-types/serde",
-	"reth-provider/serde",
-	"reth-optimism-primitives/serde",
+    "alloy-consensus?/serde",
+    "alloy-eips/serde",
+    "alloy-primitives/serde",
+    "op-alloy-consensus?/serde",
+    "reth-execution-types/serde",
+    "reth-provider/serde",
+    "reth-optimism-primitives/serde",
 ]

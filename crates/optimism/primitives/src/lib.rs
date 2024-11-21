@@ -8,20 +8,23 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 pub mod bedrock;
+pub mod block;
+pub mod transaction;
+pub use block::*;
+pub use transaction::*;
 pub mod tx_type;
 
 pub use tx_type::OpTxType;
 
-use reth_node_types::NodePrimitives;
-use reth_primitives::{Block, Receipt, TransactionSigned};
+use reth_node_types::FullNodePrimitives;
 
 /// Optimism primitive types.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct OpPrimitives;
 
-impl NodePrimitives for OpPrimitives {
+impl FullNodePrimitives for OpPrimitives {
     type Block = Block;
     type SignedTx = TransactionSigned;
     type TxType = OpTxType;
-    type Receipt = Receipt;
+    type Receipt = reth_primitives::Receipt;
 }

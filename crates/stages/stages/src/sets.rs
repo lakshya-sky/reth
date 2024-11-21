@@ -235,7 +235,7 @@ where
         provider: P,
         tip: watch::Receiver<B256>,
         header_downloader: H,
-        consensus: Arc<dyn Consensus>,
+        consensus: Arc<dyn Consensus<H::Header, B::Body>>,
         stages_config: StageConfig,
     ) -> StageSetBuilder<Provider>
     where

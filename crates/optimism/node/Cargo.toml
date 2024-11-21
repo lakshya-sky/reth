@@ -33,6 +33,7 @@ reth-trie-db.workspace = true
 reth-rpc-server-types.workspace = true
 
 # op-reth
+reth-optimism-primitives.workspace = true
 reth-optimism-payload-builder.workspace = true
 reth-optimism-evm.workspace = true
 reth-optimism-rpc.workspace = true

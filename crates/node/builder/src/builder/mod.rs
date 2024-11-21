@@ -365,8 +365,7 @@ where
                 <N::ComponentsBuilder as NodeComponentsBuilder<RethFullAdapter<DB, N>>>::Components,
             >,
         >,
-        N::Primitives:
-            FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+        N::Primitives: FullNodePrimitives<Block: reth_node_api::Block>,
     {
         self.node(node).launch().await
     }
@@ -557,8 +556,7 @@ where
     T: NodeTypesWithEngine + NodeTypesForProvider,
     CB: NodeComponentsBuilder<RethFullAdapter<DB, T>>,
     AO: RethRpcAddOns<NodeAdapter<RethFullAdapter<DB, T>, CB::Components>>,
-    T::Primitives:
-        FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+    T::Primitives: FullNodePrimitives<Block: reth_node_api::Block>,
 {
     /// Launches the node with the [`DefaultNodeLauncher`] that sets up engine API consensus and rpc
     pub async fn launch(

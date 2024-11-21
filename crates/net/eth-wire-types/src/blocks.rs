@@ -75,7 +75,7 @@ impl From<Vec<B256>> for GetBlockBodies {
 #[derive(Clone, Debug, PartialEq, Eq, RlpEncodableWrapper, RlpDecodableWrapper, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(any(test, feature = "arbitrary"), derive(arbitrary::Arbitrary))]
-pub struct BlockBodies<B = reth_primitives::BlockBody>(
+pub struct BlockBodies<B>(
     /// The requested block bodies, each of which should correspond to a hash in the request.
     pub Vec<B>,
 );

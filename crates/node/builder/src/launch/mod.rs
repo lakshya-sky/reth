@@ -102,8 +102,7 @@ where
     T: FullNodeTypes<Provider = BlockchainProvider<Types>, Types = Types>,
     CB: NodeComponentsBuilder<T>,
     AO: RethRpcAddOns<NodeAdapter<T, CB::Components>>,
-    Types::Primitives:
-        FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+    Types::Primitives: FullNodePrimitives<Block: reth_node_api::Block>,
 {
     type Node = NodeHandle<NodeAdapter<T, CB::Components>, AO>;
 

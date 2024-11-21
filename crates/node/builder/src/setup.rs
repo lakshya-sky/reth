@@ -12,7 +12,7 @@ use reth_downloaders::{
 use reth_evm::execute::BlockExecutorProvider;
 use reth_exex::ExExManagerHandle;
 use reth_network_p2p::{
-    bodies::downloader::BodyDownloader, headers::downloader::HeaderDownloader, EthBlockClient,
+    bodies::downloader::BodyDownloader, headers::downloader::HeaderDownloader, BlockClient,
 };
 use reth_node_api::FullNodePrimitives;
 use reth_provider::{providers::ProviderNodeTypes, ProviderFactory};
@@ -39,10 +39,12 @@ pub fn build_networked_pipeline<N, Client, Executor>(
 ) -> eyre::Result<Pipeline<N>>
 where
     N: ProviderNodeTypes,
-    Client: EthBlockClient + 'static,
+    Client: BlockClient<
+            Header = alloy_consensus::Header,
+            Body = <<N::Primitives as FullNodePrimitives>::Block as reth_node_api::Block>::Body,
+        > + 'static,
     Executor: BlockExecutorProvider,
-    N::Primitives:
-        FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+    N::Primitives: FullNodePrimitives<Block: reth_node_api::Block<Body: reth_node_api::BlockBody>>,
 {
     // building network downloaders using the fetch client
     let header_downloader = ReverseHeadersDownloaderBuilder::new(config.headers)
@@ -77,7 +79,7 @@ pub fn build_pipeline<N, H, B, Executor>(
     stage_config: &StageConfig,
     header_downloader: H,
     body_downloader: B,
-    consensus: Arc<dyn Consensus>,
+    consensus: Arc<dyn Consensus<H::Header, B::Body>>,
     max_block: Option<u64>,
     metrics_tx: reth_stages::MetricEventsSender,
     prune_config: Option<PruneConfig>,
@@ -92,8 +94,7 @@ where
             Body = <<N::Primitives as FullNodePrimitives>::Block as reth_node_api::Block>::Body,
         > + 'static,
     Executor: BlockExecutorProvider,
-    N::Primitives:
-        FullNodePrimitives<Block: reth_node_api::Block<Body = reth_primitives::BlockBody>>,
+    N::Primitives: FullNodePrimitives<Block: reth_node_api::Block<Body: reth_node_api::BlockBody>>,
 {
     let mut builder = Pipeline::<N>::builder();
 
